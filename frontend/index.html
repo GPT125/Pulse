@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pulse — Messaging, AI, Games, YouTube</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <!-- AUTH SCREEN -->
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <h1>Pulse</h1>
+      <p class="muted">Messaging · AI · Games · YouTube</p>
+      <div class="tabs">
+        <button class="tab-btn active" data-form="login-form">Sign in</button>
+        <button class="tab-btn" data-form="register-form">Sign up</button>
+      </div>
+      <form id="login-form" class="auth-form active">
+        <input type="email" name="email" placeholder="Email" required autocomplete="email" />
+        <input type="password" name="password" placeholder="Password" required autocomplete="current-password" />
+        <button type="submit">Sign in</button>
+      </form>
+      <form id="register-form" class="auth-form">
+        <input type="text" name="display_name" placeholder="Your name" required />
+        <input type="email" name="email" placeholder="Email" required />
+        <input type="password" name="password" placeholder="Password (min 6)" required minlength="6" />
+        <button type="submit">Create account</button>
+      </form>
+      <div id="auth-error" class="error"></div>
+    </div>
+  </section>
+
+  <!-- APP SHELL -->
+  <main id="app" class="app hidden">
+    <nav class="sidebar">
+      <div class="brand">Pulse</div>
+      <button class="nav-btn active" data-view="chats">💬 Chats</button>
+      <button class="nav-btn" data-view="ai">✨ AI</button>
+      <button class="nav-btn" data-view="games">🎮 Games</button>
+      <button class="nav-btn" data-view="youtube">▶ YouTube</button>
+      <button class="nav-btn" data-view="settings">⚙ Settings</button>
+      <div class="me" id="me">
+        <img id="me-avatar" src="" alt="" />
+        <div>
+          <div class="me-name" id="me-name"></div>
+          <button id="logout-btn" class="link-btn">Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- CHATS VIEW -->
+    <section class="view" id="view-chats">
+      <div class="chat-list-pane">
+        <div class="pane-header">
+          <input id="chat-search" placeholder="Search people by email…" />
+          <button id="new-group-btn" title="New group">+</button>
+        </div>
+        <div id="search-results" class="search-results"></div>
+        <div id="chat-list" class="chat-list"></div>
+      </div>
+      <div class="chat-pane" id="chat-pane">
+        <div class="empty-state">Select a chat to start messaging</div>
+      </div>
+    </section>
+
+    <!-- AI VIEW -->
+    <section class="view hidden" id="view-ai">
+      <div class="chat-pane" id="ai-pane">
+        <div class="chat-header">
+          <div class="avatar bot">✨</div>
+          <div>
+            <div class="chat-title">AI Assistant</div>
+            <div class="chat-sub">Powered by LLM · ask anything</div>
+          </div>
+        </div>
+        <div class="messages" id="ai-messages"></div>
+        <form class="composer" id="ai-composer">
+          <input id="ai-input" placeholder="Message AI…" />
+          <button>Send</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- GAMES VIEW -->
+    <section class="view hidden" id="view-games">
+      <div class="games-pane">
+        <div class="pane-header">
+          <h2>Game Hub</h2>
+          <button id="upload-game-btn">+ Upload Game</button>
+        </div>
+        <div id="game-grid" class="game-grid"></div>
+      </div>
+      <div class="game-detail" id="game-detail">
+        <div class="empty-state">Select a game</div>
+      </div>
+    </section>
+
+    <!-- YOUTUBE VIEW -->
+    <section class="view hidden" id="view-youtube">
+      <div class="yt-pane">
+        <form id="yt-search-form" class="yt-search">
+          <input id="yt-q" placeholder="Search YouTube…" />
+          <button>Search</button>
+        </form>
+        <div id="yt-results" class="yt-results"></div>
+      </div>
+      <div class="yt-player" id="yt-player">
+        <div class="empty-state">Search and play any video — proxied through this server</div>
+      </div>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section class="view hidden" id="view-settings">
+      <div class="settings-pane">
+        <h2>Settings</h2>
+        <form id="profile-form" class="settings-form">
+          <label>Display name<input name="display_name" /></label>
+          <label>Status<input name="status_message" placeholder="Available, Busy, etc." /></label>
+          <label>Avatar (URL)<input name="avatar_url" placeholder="https://…" /></label>
+          <button>Save profile</button>
+        </form>
+        <p class="muted">Email: <span id="settings-email"></span></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODALS -->
+  <div id="modal-root"></div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ws.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/ai.js"></script>
+  <script src="/js/games.js"></script>
+  <script src="/js/youtube.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
