@@ -21,7 +21,12 @@ const UPLOADS_DIR = path.join(__dirname, 'uploads');
 try { youtube.checkBinaries(); } catch (e) { console.warn('[youtube]', e.message); }
 
 const app = express();
-app.use(cors());
+// CORS: comma-separated origins via CORS_ORIGINS, or "*" by default.
+const corsOrigins = (process.env.CORS_ORIGINS || '*').split(',').map(s => s.trim());
+app.use(cors({
+  origin: corsOrigins.includes('*') ? true : corsOrigins,
+  credentials: false
+}));
 app.use(express.json({ limit: '5mb' }));
 
 // Static frontend & uploaded avatars

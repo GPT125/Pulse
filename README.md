@@ -30,6 +30,10 @@ node server.js
 
 Open http://localhost:4000
 
+## Deploy
+
+See [DEPLOY-VERCEL.md](./DEPLOY-VERCEL.md). Short version: **Vercel for frontend + Railway/Fly/Render for backend** (Vercel can't host the WebSockets, SQLite, and `yt-dlp` streaming).
+
 Optional env:
 - `OPENAI_API_KEY` — enable real LLM responses on the AI tab
 - `JWT_SECRET` — override JWT secret

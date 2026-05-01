@@ -7,8 +7,7 @@ window.WS = (() => {
     const token = API.token();
     if (!token) return;
     if (socket && socket.readyState === WebSocket.OPEN) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    socket = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}`);
+    socket = new WebSocket(`${API.wsUrl('/ws')}?token=${encodeURIComponent(token)}`);
     socket.onopen = () => { /* console.log('ws open'); */ };
     socket.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
