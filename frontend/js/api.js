@@ -39,6 +39,7 @@ window.API = (() => {
     setAuth, token, user, logout,
     config: () => req('GET', '/api/v1/config'),
     googleSignIn: (credential) => req('POST', '/api/v1/auth/google', { credential }),
+    guestSignIn: (display_name) => req('POST', '/api/v1/auth/guest', { display_name }),
     devSignIn: (email, display_name) => req('POST', '/api/v1/auth/dev', { email, display_name }),
     me: () => req('GET', '/api/v1/me'),
     updateProfile: (data) => req('PUT', '/api/v1/profile', data),
@@ -48,7 +49,19 @@ window.API = (() => {
     createGroup: (name, members) => req('POST', '/api/v1/chats/group', { name, members }),
     aiChannel: () => req('GET', '/api/v1/chats/ai'),
     getMessages: (cid) => req('GET', `/api/v1/chats/${cid}/messages`),
-    sendMessage: (cid, content) => req('POST', `/api/v1/chats/${cid}/message`, { content }),
+    sendMessage: (cid, content, extra = {}) => req('POST', `/api/v1/chats/${cid}/message`, { content, ...extra }),
+    aiUploadImage: async (file) => {
+      const fd = new FormData();
+      fd.append('image', file);
+      const headers = {};
+      if (_token) headers['Authorization'] = `Bearer ${_token}`;
+      const r = await fetch(apiUrl('/api/v1/ai/upload'), { method: 'POST', headers, body: fd });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    },
+    proxyUrl: (target) => apiUrl(`/api/v1/proxy/fetch?url=${encodeURIComponent(target)}`),
+    apiBase: () => API_BASE,
     markRead: (cid, mid) => req('POST', `/api/v1/chats/${cid}/read`, { message_id: mid }),
     listGames: () => req('GET', '/api/v1/games'),
     getGame: (id) => req('GET', `/api/v1/games/${id}`),

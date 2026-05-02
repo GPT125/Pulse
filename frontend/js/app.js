@@ -6,6 +6,27 @@
     $('#app').classList.toggle('hidden', show);
   }
 
+  // ----- Guest Sign-In -----
+  function setupGuest() {
+    const btn = $('#guest-btn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = 'Signing in…';
+      $('#auth-error').textContent = '';
+      try {
+        const data = await API.guestSignIn();
+        API.setAuth(data.token, data.user);
+        await startApp();
+      } catch (err) {
+        $('#auth-error').textContent = err.message;
+        btn.textContent = orig;
+        btn.disabled = false;
+      }
+    });
+  }
+
   // ----- Google Sign-In -----
   async function setupGoogle() {
     const host = $('#g-button-host');
@@ -70,6 +91,7 @@
       $('#view-' + view).classList.remove('hidden');
       if (view === 'chats') Chat.refreshList();
       if (view === 'games') Games.refresh();
+      if (view === 'web' && !WebView._inited) { WebView.init(); WebView._inited = true; }
     }));
     $('#logout-btn').addEventListener('click', () => {
       API.logout();
@@ -143,6 +165,7 @@
     }
     showAuth(true);
     setupGoogle();
+    setupGuest();
   }
   boot();
 })();

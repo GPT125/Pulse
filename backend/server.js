@@ -1,5 +1,10 @@
 // Load .env in dev. In production (Render), env vars come from the dashboard.
-try { require('dotenv').config(); } catch {}
+// Try ./backend/.env then ../.env so a single .env at the repo root works.
+try {
+  const dotenv = require('dotenv');
+  dotenv.config();
+  dotenv.config({ path: require('path').join(__dirname, '..', '.env'), override: false });
+} catch {}
 
 const path = require('path');
 const fs = require('fs');
@@ -11,11 +16,12 @@ const multer = require('multer');
 const { v4: uuid } = require('uuid');
 
 const db = require('./db');
-const { googleSignIn, devSignIn, signToken, verifyToken, authMiddleware, publicUser } = require('./auth');
+const { googleSignIn, guestSignIn, devSignIn, signToken, verifyToken, authMiddleware, publicUser } = require('./auth');
 const chat = require('./chat');
 const ai = require('./ai');
 const games = require('./games');
 const youtube = require('./youtube');
+const proxy = require('./proxy');
 
 const PORT = process.env.PORT || 4000;
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
@@ -36,6 +42,10 @@ app.use(express.json({ limit: '5mb' }));
 app.use('/', express.static(FRONTEND_DIR));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// Ensure upload subdirs exist
+fs.mkdirSync(path.join(UPLOADS_DIR, 'avatars'), { recursive: true });
+fs.mkdirSync(path.join(UPLOADS_DIR, 'ai'), { recursive: true });
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(UPLOADS_DIR, 'avatars')),
@@ -44,10 +54,29 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
+// Separate uploader for AI image attachments (images only, up to 8MB).
+const aiUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, path.join(UPLOADS_DIR, 'ai')),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || `.${(file.mimetype || 'image/png').split('/')[1] || 'png'}`;
+      cb(null, `${uuid()}${ext}`);
+    }
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!/^image\//.test(file.mimetype || '')) return cb(new Error('Only image files allowed'));
+    cb(null, true);
+  }
+});
+
 // ======== AUTH ========
 // Public config endpoint — frontend uses this to get the Google client ID.
 app.get('/api/v1/config', (req, res) => {
-  res.json({ google_client_id: process.env.GOOGLE_CLIENT_ID || '' });
+  res.json({
+    google_client_id: process.env.GOOGLE_CLIENT_ID || '',
+    allow_guest: process.env.ALLOW_GUEST !== '0'
+  });
 });
 
 // Google Sign-In: frontend posts a Google ID token (`credential` from GIS).
@@ -58,6 +87,16 @@ app.post('/api/v1/auth/google', async (req, res) => {
     const token = signToken(user);
     res.json({ token, user: publicUser(user) });
   } catch (e) { res.status(401).json({ error: e.message }); }
+});
+
+// Guest sign-in: anyone can grab a fresh ephemeral account.
+app.post('/api/v1/auth/guest', (req, res) => {
+  try {
+    const { display_name } = req.body || {};
+    const user = guestSignIn(display_name);
+    const token = signToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (e) { res.status(403).json({ error: e.message }); }
 });
 
 // Dev-only sign-in (DEV_AUTH_BYPASS=1). Used by the local smoke test.
@@ -136,13 +175,34 @@ app.post('/api/v1/chats/:id/message', authMiddleware, async (req, res) => {
   });
   broadcastMessage(channelId, msg);
 
-  // If AI channel: respond with AI message
+  // If AI channel: respond with AI message (passing image attachment if any).
   const channel = db.prepare('SELECT * FROM channels WHERE channel_id = ?').get(channelId);
   if (channel && channel.type === 'ai') {
-    handleAIResponse(channelId, content).catch(e => console.error('AI err:', e));
+    const imageUrls = [];
+    if (attachment_url && (message_type === 'image' || /\.(png|jpe?g|gif|webp)$/i.test(attachment_url))) {
+      imageUrls.push(absolutizeUrl(req, attachment_url));
+    }
+    handleAIResponse(channelId, content, imageUrls).catch(e => console.error('AI err:', e));
   }
   res.json({ message: msg });
 });
+
+// AI image upload — returns a URL the client can attach to a chat message.
+app.post('/api/v1/ai/upload', authMiddleware, aiUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'no file' });
+  res.json({
+    url: `/uploads/ai/${req.file.filename}`,
+    mime: req.file.mimetype,
+    size: req.file.size
+  });
+});
+
+function absolutizeUrl(req, maybeRelative) {
+  if (/^https?:\/\//i.test(maybeRelative)) return maybeRelative;
+  const proto = req.protocol;
+  const host = req.get('host');
+  return `${proto}://${host}${maybeRelative.startsWith('/') ? '' : '/'}${maybeRelative}`;
+}
 
 app.post('/api/v1/chats/:id/read', authMiddleware, (req, res) => {
   const { message_id } = req.body || {};
@@ -150,9 +210,9 @@ app.post('/api/v1/chats/:id/read', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
-async function handleAIResponse(channelId, prompt) {
+async function handleAIResponse(channelId, prompt, imageUrls = []) {
   const history = chat.getMessages(channelId, 20);
-  const reply = await ai.aiReply(history, prompt);
+  const reply = await ai.aiReply(history, prompt, imageUrls);
   // Ensure ai-bot user exists
   const botId = 'ai-bot';
   const exists = db.prepare('SELECT 1 FROM users WHERE user_id = ?').get(botId);
@@ -243,6 +303,11 @@ app.get('/api/v1/youtube/comments/:id', async (req, res) => {
   try { res.json({ comments: await youtube.comments(id) }); }
   catch (e) { res.status(502).json({ error: e.message }); }
 });
+
+// ======== EDUCATIONAL HTTP PROXY ========
+// Basic learning-oriented proxy. Server-side fetch + HTML link rewriting.
+// Not designed to bypass network filters — see backend/proxy.js for details.
+app.get('/api/v1/proxy/fetch', proxy.handleFetch);
 
 // ======== HEALTH ========
 app.get('/api/v1/health', (req, res) => res.json({ ok: true, ts: Date.now() }));

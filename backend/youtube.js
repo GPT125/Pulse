@@ -18,16 +18,12 @@ function setCachedInfo(videoId, data) {
 }
 
 // Use yt-dlp -j to get JSON metadata including stream URLs.
+// We DON'T pre-filter with -f — getting the full format list lets us pick
+// progressive MP4 (best for <video>) OR an HLS manifest (best for HD via hls.js).
 function ytdlpJson(videoId) {
   return new Promise((resolve, reject) => {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    // -f selects the best progressive HTTPS MP4 with both video+audio (browser <video>-friendly).
-    // Falls back to any best mp4 if not available.
-    const args = [
-      '-j', '--no-warnings', '--no-playlist',
-      '-f', '18/best[ext=mp4][vcodec!=none][acodec!=none][protocol^=https]/best[ext=mp4][protocol^=https]/best',
-      url
-    ];
+    const args = ['-j', '--no-warnings', '--no-playlist', '--skip-download', url];
     const p = spawn('yt-dlp', args);
     let out = '', err = '';
     p.stdout.on('data', d => out += d);
@@ -40,44 +36,76 @@ function ytdlpJson(videoId) {
   });
 }
 
-function pickFormat(info) {
-  // With -f selector above, yt-dlp returns the chosen format at top-level (url).
-  // But info.formats may still hold the full list. Prefer requested_formats / direct url.
-  if (info.url && info.protocol && info.protocol.startsWith('https') && info.ext === 'mp4'
-      && info.vcodec && info.vcodec !== 'none' && info.acodec && info.acodec !== 'none') {
-    return info;
-  }
-  // Search formats for a progressive https mp4
+// Pick the best playable format. Two browser-friendly paths:
+//   1) Progressive MP4 (audio+video in one file) — works in <video> directly.
+//      Highest progressive YouTube ever offers is 720p (itag 22) but it's
+//      often missing; otherwise capped at 360p (itag 18).
+//   2) HLS m3u8 master manifest — gives access to up-to-1080p on most videos
+//      and plays via hls.js in the browser.
+function pickBestFormat(info) {
   const fmts = info.formats || [];
+
+  // Progressive MP4 candidates
   const progressive = fmts.filter(f =>
     f.vcodec && f.vcodec !== 'none' &&
     f.acodec && f.acodec !== 'none' &&
     f.ext === 'mp4' &&
     f.protocol && f.protocol.startsWith('https')
-  ).sort((a,b) => (a.height||0) - (b.height||0));
-  const target = progressive.find(f => (f.height||0) >= 360) || progressive[progressive.length - 1];
-  if (target) return target;
-  // Last resort: top-level url
-  if (info.url) return info;
-  return null;
+  ).sort((a, b) => (b.height || 0) - (a.height || 0));
+
+  // HLS master manifest (one URL that lists multiple bitrates)
+  const hls = fmts.filter(f =>
+    f.protocol === 'm3u8_native' || f.protocol === 'm3u8' ||
+    (f.manifest_url && /\.m3u8/i.test(f.manifest_url))
+  ).sort((a, b) => (b.height || 0) - (a.height || 0));
+
+  return { progressive, hls, bestProgressive: progressive[0] || null, bestHls: hls[0] || null };
 }
 
 async function resolveVideo(videoId) {
   let info = getCachedInfo(videoId);
   if (info) return info;
   const data = await ytdlpJson(videoId);
-  const fmt = pickFormat(data);
-  if (!fmt || !fmt.url) throw new Error('No playable format');
+  const picks = pickBestFormat(data);
+
+  // Prefer HLS for HD playback (1080p, adaptive bitrate via hls.js).
+  // Fall back to progressive MP4 if HLS isn't available.
+  const useHls = picks.bestHls && (picks.bestHls.height || 0) >= 480;
+
+  let chosenKind, chosenUrl, chosenHeaders, chosenHeight, chosenContentType;
+  if (useHls) {
+    chosenKind = 'hls';
+    chosenUrl = picks.bestHls.manifest_url || picks.bestHls.url;
+    chosenHeaders = picks.bestHls.http_headers || {};
+    chosenHeight = picks.bestHls.height || null;
+    chosenContentType = 'application/vnd.apple.mpegurl';
+  } else if (picks.bestProgressive) {
+    chosenKind = 'mp4';
+    chosenUrl = picks.bestProgressive.url;
+    chosenHeaders = picks.bestProgressive.http_headers || {};
+    chosenHeight = picks.bestProgressive.height || null;
+    chosenContentType = 'video/mp4';
+  } else if (picks.bestHls) {
+    chosenKind = 'hls';
+    chosenUrl = picks.bestHls.manifest_url || picks.bestHls.url;
+    chosenHeaders = picks.bestHls.http_headers || {};
+    chosenHeight = picks.bestHls.height || null;
+    chosenContentType = 'application/vnd.apple.mpegurl';
+  } else {
+    throw new Error('No playable format');
+  }
+
   info = {
     title: data.title,
     duration: data.duration,
     thumbnail: data.thumbnail,
     channel: data.channel || data.uploader,
-    streamUrl: fmt.url,
-    headers: fmt.http_headers || {},
-    contentType: fmt.ext === 'mp4' ? 'video/mp4' : (fmt.mimetype || 'video/mp4'),
-    height: fmt.height,
-    filesize: fmt.filesize || fmt.filesize_approx || null
+    kind: chosenKind,
+    streamUrl: chosenUrl,
+    headers: chosenHeaders,
+    contentType: chosenContentType,
+    height: chosenHeight,
+    filesize: null
   };
   setCachedInfo(videoId, info);
   return info;

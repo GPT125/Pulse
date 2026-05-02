@@ -84,6 +84,31 @@ async function googleSignIn(credential) {
   return upsertUserFromGoogle(payload);
 }
 
+// Guest sign-in: creates a fresh anonymous user every time. Disable with
+// ALLOW_GUEST=0 in production. Each guest gets a random email and is treated
+// as a normal user thereafter (can chat, post, etc.).
+function guestSignIn(displayName) {
+  if (process.env.ALLOW_GUEST === '0') throw new Error('Guest sign-in is disabled');
+  const now = Date.now();
+  const id = uuid();
+  const short = id.slice(0, 8);
+  const newUser = {
+    user_id: id,
+    email: `guest-${short}@guest.local`,
+    password_hash: null,
+    google_sub: null,
+    display_name: (displayName && displayName.trim()) || `Guest ${short.slice(0, 4).toUpperCase()}`,
+    avatar_url: null,
+    status_message: 'Guest',
+    created_at: now,
+    last_online: now
+  };
+  db.prepare(`INSERT INTO users (user_id,email,password_hash,google_sub,display_name,avatar_url,status_message,created_at,last_online)
+              VALUES (@user_id,@email,@password_hash,@google_sub,@display_name,@avatar_url,@status_message,@created_at,@last_online)`)
+    .run(newUser);
+  return newUser;
+}
+
 // Dev-only: create/lookup a user by email. Guarded by DEV_AUTH_BYPASS=1.
 function devSignIn(email, displayName) {
   if (process.env.DEV_AUTH_BYPASS !== '1') throw new Error('Dev auth bypass is disabled');
@@ -124,4 +149,4 @@ function publicUser(u) {
   };
 }
 
-module.exports = { signToken, verifyToken, authMiddleware, googleSignIn, devSignIn, publicUser };
+module.exports = { signToken, verifyToken, authMiddleware, googleSignIn, guestSignIn, devSignIn, publicUser };

@@ -89,7 +89,15 @@ window.Chat = (() => {
     if (!isMe) row.appendChild(avatarFor({ display_name: m.sender_name, avatar_url: m.sender_avatar }, 28));
     const wrap = el('div');
     if (!isMe) wrap.appendChild(el('div', { class: 'sender-name', text: m.sender_name || '' }));
-    wrap.appendChild(el('div', { class: 'bubble', text: m.content || '' }));
+    const bubble = el('div', { class: 'bubble' });
+    if (m.attachment_url && (m.message_type === 'image' || /\.(png|jpe?g|gif|webp)$/i.test(m.attachment_url))) {
+      const src = /^https?:\/\//i.test(m.attachment_url)
+        ? m.attachment_url : (API.apiBase() || '') + m.attachment_url;
+      bubble.classList.add('bubble-image');
+      bubble.appendChild(el('img', { class: 'bubble-img', src, alt: 'attachment' }));
+    }
+    if (m.content) bubble.appendChild(el('div', { class: 'bubble-text', text: m.content }));
+    wrap.appendChild(bubble);
     wrap.appendChild(el('div', { class: 'bubble-meta', text: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
     row.appendChild(wrap);
     cont.appendChild(row);
