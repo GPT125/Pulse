@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+backend/data/
+backend/uploads/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+.vercel
+.idea/
+.vscode/

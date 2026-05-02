@@ -1,9 +1,19 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('./db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('[auth] GOOGLE_CLIENT_ID is not set — Google Sign-In will fail.');
+}
+if (JWT_SECRET === 'dev-secret-change-me') {
+  console.warn('[auth] Using dev JWT_SECRET. Set JWT_SECRET in production.');
+}
+
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 function signToken(user) {
   return jwt.sign({ uid: user.user_id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
@@ -24,34 +34,82 @@ function authMiddleware(req, res, next) {
   next();
 }
 
-async function register(email, password, displayName) {
-  email = email.toLowerCase().trim();
-  const existing = db.prepare('SELECT user_id FROM users WHERE email = ?').get(email);
-  if (existing) throw new Error('Email already registered');
-  const password_hash = await bcrypt.hash(password, 10);
-  const user = {
+function upsertUserFromGoogle(payload) {
+  const sub = payload.sub;
+  const email = (payload.email || '').toLowerCase().trim();
+  const name = payload.name || email.split('@')[0] || 'User';
+  const picture = payload.picture || null;
+  const now = Date.now();
+
+  const bySub = db.prepare('SELECT * FROM users WHERE google_sub = ?').get(sub);
+  if (bySub) {
+    db.prepare('UPDATE users SET last_online = ?, avatar_url = COALESCE(avatar_url, ?) WHERE user_id = ?')
+      .run(now, picture, bySub.user_id);
+    return db.prepare('SELECT * FROM users WHERE user_id = ?').get(bySub.user_id);
+  }
+
+  if (email) {
+    const byEmail = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (byEmail) {
+      db.prepare('UPDATE users SET google_sub = ?, last_online = ?, avatar_url = COALESCE(avatar_url, ?) WHERE user_id = ?')
+        .run(sub, now, picture, byEmail.user_id);
+      return db.prepare('SELECT * FROM users WHERE user_id = ?').get(byEmail.user_id);
+    }
+  }
+
+  const newUser = {
+    user_id: uuid(),
+    email: email || `${sub}@google.local`,
+    password_hash: null,
+    google_sub: sub,
+    display_name: name,
+    avatar_url: picture,
+    status_message: '',
+    created_at: now,
+    last_online: now
+  };
+  db.prepare(`INSERT INTO users (user_id,email,password_hash,google_sub,display_name,avatar_url,status_message,created_at,last_online)
+              VALUES (@user_id,@email,@password_hash,@google_sub,@display_name,@avatar_url,@status_message,@created_at,@last_online)`)
+    .run(newUser);
+  return newUser;
+}
+
+async function googleSignIn(credential) {
+  if (!credential) throw new Error('Missing Google credential');
+  if (!GOOGLE_CLIENT_ID) throw new Error('Server is missing GOOGLE_CLIENT_ID');
+  const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+  const payload = ticket.getPayload();
+  if (!payload || !payload.sub) throw new Error('Invalid Google token');
+  if (payload.email_verified === false) throw new Error('Google email not verified');
+  return upsertUserFromGoogle(payload);
+}
+
+// Dev-only: create/lookup a user by email. Guarded by DEV_AUTH_BYPASS=1.
+function devSignIn(email, displayName) {
+  if (process.env.DEV_AUTH_BYPASS !== '1') throw new Error('Dev auth bypass is disabled');
+  email = (email || '').toLowerCase().trim();
+  if (!email) throw new Error('email required');
+  const now = Date.now();
+  const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (existing) {
+    db.prepare('UPDATE users SET last_online = ? WHERE user_id = ?').run(now, existing.user_id);
+    return existing;
+  }
+  const newUser = {
     user_id: uuid(),
     email,
-    password_hash,
+    password_hash: null,
+    google_sub: null,
     display_name: displayName || email.split('@')[0],
     avatar_url: null,
     status_message: '',
-    created_at: Date.now(),
-    last_online: Date.now()
+    created_at: now,
+    last_online: now
   };
-  db.prepare(`INSERT INTO users (user_id,email,password_hash,display_name,avatar_url,status_message,created_at,last_online)
-              VALUES (@user_id,@email,@password_hash,@display_name,@avatar_url,@status_message,@created_at,@last_online)`).run(user);
-  return user;
-}
-
-async function login(email, password) {
-  email = email.toLowerCase().trim();
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!user || !user.password_hash) throw new Error('Invalid credentials');
-  const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) throw new Error('Invalid credentials');
-  db.prepare('UPDATE users SET last_online = ? WHERE user_id = ?').run(Date.now(), user.user_id);
-  return user;
+  db.prepare(`INSERT INTO users (user_id,email,password_hash,google_sub,display_name,avatar_url,status_message,created_at,last_online)
+              VALUES (@user_id,@email,@password_hash,@google_sub,@display_name,@avatar_url,@status_message,@created_at,@last_online)`)
+    .run(newUser);
+  return newUser;
 }
 
 function publicUser(u) {
@@ -66,4 +124,4 @@ function publicUser(u) {
   };
 }
 
-module.exports = { signToken, verifyToken, authMiddleware, register, login, publicUser };
+module.exports = { signToken, verifyToken, authMiddleware, googleSignIn, devSignIn, publicUser };

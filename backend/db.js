@@ -1,7 +1,11 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const db = new Database(path.join(__dirname, 'data', 'app.db'));
+const DATA_DIR = path.join(__dirname, 'data');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const db = new Database(path.join(DATA_DIR, 'app.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -10,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT,
+  google_sub TEXT UNIQUE,
   display_name TEXT NOT NULL,
   avatar_url TEXT,
   status_message TEXT DEFAULT '',
@@ -87,5 +92,12 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
   channel_id TEXT NOT NULL
 );
 `);
+
+// Migration: add google_sub to old user tables that pre-date the column.
+const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+if (!userCols.includes('google_sub')) {
+  db.exec("ALTER TABLE users ADD COLUMN google_sub TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL");
+}
 
 module.exports = db;
