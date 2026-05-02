@@ -1,3 +1,6 @@
+// Load .env in dev. In production (Render), env vars come from the dashboard.
+try { require('dotenv').config(); } catch {}
+
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
@@ -8,7 +11,7 @@ const multer = require('multer');
 const { v4: uuid } = require('uuid');
 
 const db = require('./db');
-const { register, login, signToken, verifyToken, authMiddleware, publicUser } = require('./auth');
+const { googleSignIn, devSignIn, signToken, verifyToken, authMiddleware, publicUser } = require('./auth');
 const chat = require('./chat');
 const ai = require('./ai');
 const games = require('./games');
@@ -42,24 +45,29 @@ const upload = multer({
 });
 
 // ======== AUTH ========
-app.post('/api/v1/register', async (req, res) => {
-  try {
-    const { email, password, display_name } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-    if (password.length < 6) return res.status(400).json({ error: 'password must be >= 6 chars' });
-    const user = await register(email, password, display_name);
-    const token = signToken(user);
-    res.json({ token, user: publicUser(user) });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+// Public config endpoint — frontend uses this to get the Google client ID.
+app.get('/api/v1/config', (req, res) => {
+  res.json({ google_client_id: process.env.GOOGLE_CLIENT_ID || '' });
 });
 
-app.post('/api/v1/login', async (req, res) => {
+// Google Sign-In: frontend posts a Google ID token (`credential` from GIS).
+app.post('/api/v1/auth/google', async (req, res) => {
   try {
-    const { email, password } = req.body || {};
-    const user = await login(email, password);
+    const { credential } = req.body || {};
+    const user = await googleSignIn(credential);
     const token = signToken(user);
     res.json({ token, user: publicUser(user) });
   } catch (e) { res.status(401).json({ error: e.message }); }
+});
+
+// Dev-only sign-in (DEV_AUTH_BYPASS=1). Used by the local smoke test.
+app.post('/api/v1/auth/dev', (req, res) => {
+  try {
+    const { email, display_name } = req.body || {};
+    const user = devSignIn(email, display_name);
+    const token = signToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (e) { res.status(403).json({ error: e.message }); }
 });
 
 app.get('/api/v1/me', authMiddleware, (req, res) => res.json({ user: publicUser(req.user) }));
@@ -226,6 +234,14 @@ app.get('/api/v1/youtube/stream/:id', (req, res) => {
   const id = req.params.id;
   if (!/^[A-Za-z0-9_-]{6,15}$/.test(id)) return res.status(400).json({ error: 'invalid id' });
   youtube.streamVideo(req, res, id);
+});
+
+// Comments — fetched on demand (slow, capped to 30).
+app.get('/api/v1/youtube/comments/:id', async (req, res) => {
+  const id = req.params.id;
+  if (!/^[A-Za-z0-9_-]{6,15}$/.test(id)) return res.status(400).json({ error: 'invalid id' });
+  try { res.json({ comments: await youtube.comments(id) }); }
+  catch (e) { res.status(502).json({ error: e.message }); }
 });
 
 // ======== HEALTH ========

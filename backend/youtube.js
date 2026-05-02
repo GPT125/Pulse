@@ -178,9 +178,49 @@ async function info(videoId) {
   };
 }
 
+// Comments: yt-dlp --get-comments. Capped to ~30, cached, with timeout.
+const commentsCache = new Map(); // videoId -> { ts, comments }
+const COMMENTS_TTL_MS = 30 * 60 * 1000;
+
+function comments(videoId) {
+  const cached = commentsCache.get(videoId);
+  if (cached && Date.now() - cached.ts < COMMENTS_TTL_MS) return Promise.resolve(cached.comments);
+  return new Promise((resolve, reject) => {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const args = [
+      '-j', '--no-warnings', '--no-playlist', '--skip-download',
+      '--get-comments',
+      '--extractor-args', 'youtube:max_comments=30,0,0,0;comment_sort=top',
+      url
+    ];
+    const p = spawn('yt-dlp', args);
+    let out = '', err = '';
+    p.stdout.on('data', d => out += d);
+    p.stderr.on('data', d => err += d);
+    const timeout = setTimeout(() => { try { p.kill(); } catch {} ; reject(new Error('Comments timed out')); }, 25000);
+    p.on('close', code => {
+      clearTimeout(timeout);
+      if (code !== 0) return reject(new Error((err.split('\n').filter(Boolean).pop()) || `yt-dlp exit ${code}`));
+      try {
+        const data = JSON.parse(out);
+        const list = (data.comments || []).slice(0, 30).map(c => ({
+          author: c.author || 'Unknown',
+          author_thumbnail: c.author_thumbnail || null,
+          text: c.text || '',
+          likes: c.like_count || 0,
+          timestamp: c.timestamp || null
+        }));
+        commentsCache.set(videoId, { ts: Date.now(), comments: list });
+        resolve(list);
+      } catch (e) { reject(e); }
+    });
+    p.on('error', e => { clearTimeout(timeout); reject(e); });
+  });
+}
+
 function checkBinaries() {
   const a = spawnSync('yt-dlp', ['--version']);
   if (a.status !== 0) throw new Error('yt-dlp not installed');
 }
 
-module.exports = { search, streamVideo, info, checkBinaries };
+module.exports = { search, streamVideo, info, comments, checkBinaries };

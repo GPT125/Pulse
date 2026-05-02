@@ -1,0 +1,63 @@
+# Render blueprint — must live at repo root (where Render looks for it).
+# Builds the backend Docker image from /backend, deploys it as a web service.
+# After first deploy: set the secret env vars in the Render dashboard
+# (anything with `sync: false`).
+services:
+  - type: web
+    name: pulse-backend
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    disk:
+      name: pulse-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Public — paste your Google OAuth client ID
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+      # Frontend origin (e.g. https://YOURNAME.github.io)
+      - key: CORS_ORIGINS
+        sync: false
+
+      # AI providers (set at least one)
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+
+      # Optional integrations (declared, not yet wired into platform features)
+      - key: NEWS_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: FINNHUB_WEBHOOK_SECRET
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: FMP_API_KEY
+        sync: false
+      - key: EOD_API_KEY
+        sync: false
+      - key: FRED_API_KEY
+        sync: false
+      - key: MARKETAUX_API_KEY
+        sync: false

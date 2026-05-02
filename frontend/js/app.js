@@ -6,32 +6,59 @@
     $('#app').classList.toggle('hidden', show);
   }
 
-  function bindAuth() {
-    $$('.tab-btn').forEach(b => b.addEventListener('click', () => {
-      $$('.tab-btn').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      $$('.auth-form').forEach(f => f.classList.remove('active'));
-      document.getElementById(b.dataset.form).classList.add('active');
-      $('#auth-error').textContent = '';
-    }));
-    $('#login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const f = e.target;
+  // ----- Google Sign-In -----
+  async function setupGoogle() {
+    const host = $('#g-button-host');
+    let clientId = window.PULSE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
       try {
-        const data = await API.login(f.email.value, f.password.value);
-        API.setAuth(data.token, data.user);
-        await startApp();
-      } catch (err) { $('#auth-error').textContent = err.message; }
+        const cfg = await API.config();
+        clientId = cfg.google_client_id;
+      } catch {}
+    }
+    if (!clientId) {
+      host.innerHTML = '';
+      host.appendChild(el('div', { class: 'error', text:
+        'Google sign-in not configured. Set GOOGLE_CLIENT_ID on the backend (see DEPLOY.md).' }));
+      return;
+    }
+    // Wait for GIS library
+    const start = Date.now();
+    while (!(window.google && google.accounts && google.accounts.id)) {
+      if (Date.now() - start > 8000) {
+        host.innerHTML = '';
+        host.appendChild(el('div', { class: 'error', text: 'Could not load Google Sign-In script.' }));
+        return;
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleCredential,
+      auto_select: false,
+      use_fedcm_for_prompt: true
     });
-    $('#register-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const f = e.target;
-      try {
-        const data = await API.register(f.email.value, f.password.value, f.display_name.value);
-        API.setAuth(data.token, data.user);
-        await startApp();
-      } catch (err) { $('#auth-error').textContent = err.message; }
+    host.innerHTML = '';
+    google.accounts.id.renderButton(host, {
+      type: 'standard',
+      theme: 'filled_blue',
+      size: 'large',
+      shape: 'pill',
+      text: 'continue_with',
+      width: 280
     });
+  }
+
+  async function handleCredential(response) {
+    $('#auth-error').textContent = '';
+    try {
+      const data = await API.googleSignIn(response.credential);
+      API.setAuth(data.token, data.user);
+      await startApp();
+    } catch (err) {
+      $('#auth-error').textContent = err.message;
+    }
   }
 
   function bindNav() {
@@ -45,7 +72,10 @@
       if (view === 'games') Games.refresh();
     }));
     $('#logout-btn').addEventListener('click', () => {
-      API.logout(); WS.disconnect(); location.reload();
+      API.logout();
+      try { WS.disconnect(); } catch {}
+      try { google.accounts.id.disableAutoSelect(); } catch {}
+      location.reload();
     });
   }
 
@@ -69,12 +99,18 @@
     const u = API.user();
     if (!u) return;
     $('#me-name').textContent = u.display_name;
-    $('#me-avatar').src = u.avatar_url || '';
-    if (!u.avatar_url) {
-      // Use initial as fallback
-      $('#me-avatar').style.display = 'none';
+    const av = $('#me-avatar');
+    const init = $('#me-initial');
+    if (u.avatar_url) {
+      av.src = u.avatar_url;
+      av.style.display = '';
+      if (init) init.style.display = 'none';
     } else {
-      $('#me-avatar').style.display = '';
+      av.style.display = 'none';
+      if (init) {
+        init.style.display = '';
+        init.textContent = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+      }
     }
     const f = $('#profile-form');
     f.display_name.value = u.display_name || '';
@@ -97,7 +133,6 @@
   }
 
   async function boot() {
-    bindAuth();
     if (API.token()) {
       try {
         const data = await API.me();
@@ -107,6 +142,7 @@
       } catch { API.logout(); }
     }
     showAuth(true);
+    setupGoogle();
   }
   boot();
 })();

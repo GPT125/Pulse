@@ -37,8 +37,9 @@ window.API = (() => {
 
   return {
     setAuth, token, user, logout,
-    register: (email, password, display_name) => req('POST', '/api/v1/register', { email, password, display_name }),
-    login: (email, password) => req('POST', '/api/v1/login', { email, password }),
+    config: () => req('GET', '/api/v1/config'),
+    googleSignIn: (credential) => req('POST', '/api/v1/auth/google', { credential }),
+    devSignIn: (email, display_name) => req('POST', '/api/v1/auth/dev', { email, display_name }),
     me: () => req('GET', '/api/v1/me'),
     updateProfile: (data) => req('PUT', '/api/v1/profile', data),
     searchUsers: (q) => req('GET', `/api/v1/users/search?q=${encodeURIComponent(q)}`),
@@ -56,6 +57,7 @@ window.API = (() => {
     reviewGame: (id, rating, comment) => req('POST', `/api/v1/games/${id}/review`, { rating, comment }),
     ytSearch: (q) => req('GET', `/api/v1/youtube/search?q=${encodeURIComponent(q)}`),
     ytInfo: (id) => req('GET', `/api/v1/youtube/info/${id}`),
+    ytComments: (id) => req('GET', `/api/v1/youtube/comments/${id}`),
     ytStreamUrl: (id) => apiUrl(`/api/v1/youtube/stream/${id}`),
     wsUrl,
   };

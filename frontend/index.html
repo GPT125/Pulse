@@ -3,48 +3,70 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pulse — Messaging, AI, Games, YouTube</title>
-<link rel="stylesheet" href="/css/styles.css" />
+<title>Pulse — Messages, AI, Games, YouTube</title>
+<meta name="theme-color" content="#0b1220" />
+<link rel="preconnect" href="https://rsms.me/" crossorigin />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <!-- AUTH SCREEN -->
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <h1>Pulse</h1>
-      <p class="muted">Messaging · AI · Games · YouTube</p>
-      <div class="tabs">
-        <button class="tab-btn active" data-form="login-form">Sign in</button>
-        <button class="tab-btn" data-form="register-form">Sign up</button>
+      <div class="logo-mark" aria-hidden="true">P</div>
+      <h1 class="auth-title">Welcome to Pulse</h1>
+      <p class="auth-tagline">Messages · AI · Games · YouTube</p>
+
+      <div id="g-button-host" class="g-button-host">
+        <div class="auth-loading">Loading sign-in…</div>
       </div>
-      <form id="login-form" class="auth-form active">
-        <input type="email" name="email" placeholder="Email" required autocomplete="email" />
-        <input type="password" name="password" placeholder="Password" required autocomplete="current-password" />
-        <button type="submit">Sign in</button>
-      </form>
-      <form id="register-form" class="auth-form">
-        <input type="text" name="display_name" placeholder="Your name" required />
-        <input type="email" name="email" placeholder="Email" required />
-        <input type="password" name="password" placeholder="Password (min 6)" required minlength="6" />
-        <button type="submit">Create account</button>
-      </form>
-      <div id="auth-error" class="error"></div>
+
+      <p class="auth-foot">Pulse uses Google to sign you in securely. We never see your password.</p>
+      <div id="auth-error" class="error" role="alert"></div>
+    </div>
+    <div class="auth-bg" aria-hidden="true">
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
+      <div class="blob b3"></div>
     </div>
   </section>
 
   <!-- APP SHELL -->
   <main id="app" class="app hidden">
     <nav class="sidebar">
-      <div class="brand">Pulse</div>
-      <button class="nav-btn active" data-view="chats">💬 Chats</button>
-      <button class="nav-btn" data-view="ai">✨ AI</button>
-      <button class="nav-btn" data-view="games">🎮 Games</button>
-      <button class="nav-btn" data-view="youtube">▶ YouTube</button>
-      <button class="nav-btn" data-view="settings">⚙ Settings</button>
+      <div class="brand">
+        <div class="logo-mark sm">P</div>
+        <span>Pulse</span>
+      </div>
+      <button class="nav-btn active" data-view="chats">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4V7a2 2 0 0 1 2-2z" fill="currentColor"/></svg>
+        <span>Messages</span>
+      </button>
+      <button class="nav-btn" data-view="ai">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M12 2l2.39 4.84L20 8l-4 3.9.94 5.5L12 14.77 7.06 17.4 8 11.9 4 8l5.61-1.16L12 2z" fill="currentColor"/></svg>
+        <span>AI</span>
+      </button>
+      <button class="nav-btn" data-view="games">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M7 7h10a5 5 0 0 1 5 5 5 5 0 0 1-9 3.4L11 14H9v2H7v-2H5v-2h2v-2H5V8h2V7zm10 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-3 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" fill="currentColor"/></svg>
+        <span>Games</span>
+      </button>
+      <button class="nav-btn" data-view="youtube">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2C1.9 9 1.9 12 1.9 12s0 3 .5 4.8A3 3 0 0 0 4.5 18.9c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1c.5-1.8.5-4.8.5-4.8s0-3-.5-4.8zM10 15.2V8.8L15.5 12 10 15.2z" fill="currentColor"/></svg>
+        <span>YouTube</span>
+      </button>
+      <button class="nav-btn" data-view="settings">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2-1.7c0-.4 0-.8-.1-1.2L21 7.4l-2-3.4-2.5.9c-.6-.5-1.3-.9-2-1.2L14 1h-4l-.5 2.7c-.7.3-1.4.7-2 1.2L5 4l-2 3.4 2 1.7c-.1.4-.1.8-.1 1.2L3 12l2 1.7c0 .4 0 .8.1 1.2L3 16.6l2 3.4 2.5-.9c.6.5 1.3.9 2 1.2L10 23h4l.5-2.7c.7-.3 1.4-.7 2-1.2L19 20l2-3.4-2-1.7c.1-.4.1-.8.1-1.2L21 12z" fill="currentColor"/></svg>
+        <span>Settings</span>
+      </button>
       <div class="me" id="me">
-        <img id="me-avatar" src="" alt="" />
-        <div>
+        <div class="me-avatar-wrap">
+          <img id="me-avatar" src="" alt="" />
+          <span class="me-initial" id="me-initial"></span>
+        </div>
+        <div class="me-info">
           <div class="me-name" id="me-name"></div>
-          <button id="logout-btn" class="link-btn">Logout</button>
+          <button id="logout-btn" class="link-btn">Sign out</button>
         </div>
       </div>
     </nav>
@@ -53,31 +75,50 @@
     <section class="view" id="view-chats">
       <div class="chat-list-pane">
         <div class="pane-header">
-          <input id="chat-search" placeholder="Search people by email…" />
-          <button id="new-group-btn" title="New group">+</button>
+          <h2>Messages</h2>
+          <button id="new-group-btn" class="icon-btn" title="New group">＋</button>
+        </div>
+        <div class="search-wrap">
+          <input id="chat-search" placeholder="Search people by name or email…" />
         </div>
         <div id="search-results" class="search-results"></div>
         <div id="chat-list" class="chat-list"></div>
       </div>
       <div class="chat-pane" id="chat-pane">
-        <div class="empty-state">Select a chat to start messaging</div>
+        <div class="empty-state">
+          <div class="empty-art">💬</div>
+          <h3>Your conversations</h3>
+          <p>Pick a chat on the left, or search for someone to start a new one.</p>
+        </div>
       </div>
     </section>
 
     <!-- AI VIEW -->
     <section class="view hidden" id="view-ai">
+      <div class="chat-list-pane ai-side">
+        <div class="pane-header">
+          <h2>AI</h2>
+        </div>
+        <div class="ai-blurb">
+          <div class="ai-icon">✨</div>
+          <h3>Pulse AI</h3>
+          <p>Ask questions, brainstorm, or summarize. Replies stream from your configured provider.</p>
+        </div>
+      </div>
       <div class="chat-pane" id="ai-pane">
         <div class="chat-header">
           <div class="avatar bot">✨</div>
           <div>
             <div class="chat-title">AI Assistant</div>
-            <div class="chat-sub">Powered by LLM · ask anything</div>
+            <div class="chat-sub" id="ai-sub">Connected via Groq · ask anything</div>
           </div>
         </div>
         <div class="messages" id="ai-messages"></div>
         <form class="composer" id="ai-composer">
-          <input id="ai-input" placeholder="Message AI…" />
-          <button>Send</button>
+          <input id="ai-input" placeholder="Message AI…" autocomplete="off" />
+          <button class="send-btn" aria-label="Send">
+            <svg viewBox="0 0 24 24"><path d="M3 12l18-9-7 9 7 9-18-9z" fill="currentColor"/></svg>
+          </button>
         </form>
       </div>
     </section>
@@ -87,12 +128,16 @@
       <div class="games-pane">
         <div class="pane-header">
           <h2>Game Hub</h2>
-          <button id="upload-game-btn">+ Upload Game</button>
+          <button id="upload-game-btn" class="primary-btn">＋ Upload</button>
         </div>
         <div id="game-grid" class="game-grid"></div>
       </div>
       <div class="game-detail" id="game-detail">
-        <div class="empty-state">Select a game</div>
+        <div class="empty-state">
+          <div class="empty-art">🎮</div>
+          <h3>Pick a game</h3>
+          <p>Or upload your own HTML5 game to share with everyone.</p>
+        </div>
       </div>
     </section>
 
@@ -101,12 +146,20 @@
       <div class="yt-pane">
         <form id="yt-search-form" class="yt-search">
           <input id="yt-q" placeholder="Search YouTube…" />
-          <button>Search</button>
+          <button class="primary-btn">Search</button>
         </form>
-        <div id="yt-results" class="yt-results"></div>
+        <div id="yt-results" class="yt-results">
+          <div class="empty-state small">
+            <p>Search to find videos</p>
+          </div>
+        </div>
       </div>
-      <div class="yt-player" id="yt-player">
-        <div class="empty-state">Search and play any video — proxied through this server</div>
+      <div class="yt-stage" id="yt-stage">
+        <div class="empty-state">
+          <div class="empty-art">▶</div>
+          <h3>Pick a video</h3>
+          <p>Videos stream through your backend — they play even when YouTube blocks happen at the network edge.</p>
+        </div>
       </div>
     </section>
 
@@ -114,13 +167,19 @@
     <section class="view hidden" id="view-settings">
       <div class="settings-pane">
         <h2>Settings</h2>
-        <form id="profile-form" class="settings-form">
-          <label>Display name<input name="display_name" /></label>
-          <label>Status<input name="status_message" placeholder="Available, Busy, etc." /></label>
-          <label>Avatar (URL)<input name="avatar_url" placeholder="https://…" /></label>
-          <button>Save profile</button>
-        </form>
-        <p class="muted">Email: <span id="settings-email"></span></p>
+        <div class="settings-section">
+          <h3>Profile</h3>
+          <form id="profile-form" class="settings-form">
+            <label>Display name<input name="display_name" /></label>
+            <label>Status<input name="status_message" placeholder="Available, Busy, etc." /></label>
+            <label>Avatar URL<input name="avatar_url" placeholder="https://…" /></label>
+            <button class="primary-btn">Save profile</button>
+          </form>
+        </div>
+        <div class="settings-section">
+          <h3>Account</h3>
+          <p class="muted">Signed in as <span id="settings-email"></span></p>
+        </div>
       </div>
     </section>
   </main>
@@ -128,14 +187,14 @@
   <!-- MODALS -->
   <div id="modal-root"></div>
 
-  <script src="/js/config.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/ws.js"></script>
-  <script src="/js/ui.js"></script>
-  <script src="/js/chat.js"></script>
-  <script src="/js/ai.js"></script>
-  <script src="/js/games.js"></script>
-  <script src="/js/youtube.js"></script>
-  <script src="/js/app.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ws.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/games.js"></script>
+  <script src="js/youtube.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
