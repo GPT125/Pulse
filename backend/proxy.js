@@ -79,7 +79,20 @@ function getCookieJar(sessionId) {
       const oldest = [...cookieJars.entries()].sort((a, b) => a[1].touched - b[1].touched)[0];
       if (oldest) cookieJars.delete(oldest[0]);
     }
-    cookieJars.set(sessionId, { touched: now, cookies: new Map() });
+    cookieJars.set(sessionId, {
+      touched: now,
+      cookies: new Map(),
+      stats: {
+        requests: 0,
+        redirects: 0,
+        blocked: 0,
+        bytes: 0,
+        last_url: null,
+        last_status: null,
+        last_error: null,
+        updated_at: now
+      }
+    });
   }
   const jar = cookieJars.get(sessionId);
   jar.touched = now;
@@ -169,6 +182,46 @@ function cookieHeaderFor(sessionId, url) {
     pairs.push(`${cookie.name}=${cookie.value}`);
   }
   return pairs.length ? pairs.join('; ') : null;
+}
+
+function touchStats(sessionId, patch = {}) {
+  const jar = getCookieJar(sessionId);
+  if (!jar) return;
+  Object.assign(jar.stats, patch, { updated_at: Date.now() });
+}
+
+function sessionStatus(rawSessionId) {
+  const sessionId = normalizeSessionId(rawSessionId);
+  if (!sessionId || !cookieJars.has(sessionId)) {
+    return {
+      session_id: sessionId,
+      active: false,
+      cookie_count: 0,
+      stats: {
+        requests: 0,
+        redirects: 0,
+        blocked: 0,
+        bytes: 0,
+        last_url: null,
+        last_status: null,
+        last_error: null,
+        updated_at: null
+      }
+    };
+  }
+  const jar = getCookieJar(sessionId);
+  return {
+    session_id: sessionId,
+    active: true,
+    cookie_count: jar.cookies.size,
+    stats: { ...jar.stats }
+  };
+}
+
+function clearSession(rawSessionId) {
+  const sessionId = normalizeSessionId(rawSessionId);
+  if (!sessionId) return false;
+  return cookieJars.delete(sessionId);
 }
 
 async function assertPublicHostname(url) {
@@ -337,6 +390,7 @@ async function fetchWithValidatedRedirects(url, req, signal, body, sessionId) {
 
     if (upstream.body && upstream.body.destroy) upstream.body.destroy();
     current = next;
+    touchStats(sessionId, { redirects: (sessionStatus(sessionId).stats.redirects || 0) + 1 });
 
     // Browser semantics: most redirects after a POST become GET, except 307/308.
     if (upstream.status === 301 || upstream.status === 302 || upstream.status === 303) {
@@ -369,6 +423,11 @@ async function handleFetch(req, res) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
+    touchStats(sessionId, {
+      requests: (sessionStatus(sessionId).stats.requests || 0) + 1,
+      last_url: url.toString(),
+      last_error: null
+    });
     const body = await readRequestBody(req);
     const { upstream, finalUrl } = await fetchWithValidatedRedirects(url, req, controller.signal, body, sessionId);
 
@@ -383,6 +442,11 @@ async function handleFetch(req, res) {
     });
 
     const buf = await readWithCap(upstream);
+    touchStats(sessionId, {
+      bytes: (sessionStatus(sessionId).stats.bytes || 0) + buf.length,
+      last_url: finalUrl.toString(),
+      last_status: upstream.status
+    });
 
     if (ctype.includes('text/html')) {
       const html = buf.toString('utf8');
@@ -398,8 +462,13 @@ async function handleFetch(req, res) {
   } catch (e) {
     if (e.name === 'AbortError') return res.status(504).json({ error: 'Upstream timed out' });
     if (/^(Refusing|Could not resolve|Too many redirects)/.test(e.message)) {
+      touchStats(sessionId, {
+        blocked: (sessionStatus(sessionId).stats.blocked || 0) + 1,
+        last_error: e.message
+      });
       return res.status(400).json({ error: e.message });
     }
+    touchStats(sessionId, { last_error: e.message });
     res.status(502).json({ error: e.message });
   } finally {
     clearTimeout(t);
@@ -413,5 +482,7 @@ module.exports = {
   rewriteUrl,
   rewriteHtml,
   rewriteCss,
-  normalizeSessionId
+  normalizeSessionId,
+  sessionStatus,
+  clearSession
 };

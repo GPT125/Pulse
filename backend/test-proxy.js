@@ -5,7 +5,9 @@ const {
   rewriteUrl,
   rewriteHtml,
   rewriteCss,
-  normalizeSessionId
+  normalizeSessionId,
+  sessionStatus,
+  clearSession
 } = require('./proxy');
 
 const proxyBase = 'https://pulse.test/api/v1/proxy/fetch';
@@ -23,6 +25,8 @@ assert.throws(() => validateTargetUrl('http://localhost:4000'), /private\/loopba
 assert.equal(validateTargetUrl('https://example.com/path').hostname, 'example.com');
 assert.equal(normalizeSessionId('abc123_XYZ-9'), 'abc123_XYZ-9');
 assert.equal(normalizeSessionId('../bad'), null);
+assert.equal(sessionStatus('abc123_XYZ-9').active, false);
+assert.equal(clearSession('abc123_XYZ-9'), false);
 
 assert.equal(
   rewriteUrl('/assets/app.css', baseUrl, proxyBase),

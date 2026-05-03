@@ -26,6 +26,15 @@ const proxy = require('./proxy');
 const PORT = process.env.PORT || 4000;
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const OPTIONAL_INTEGRATIONS = [
+  ['news', 'NEWS_API_KEY'],
+  ['finnhub', 'FINNHUB_API_KEY'],
+  ['alpha_vantage', 'ALPHA_VANTAGE_API_KEY'],
+  ['financial_modeling_prep', 'FMP_API_KEY'],
+  ['eod_historical_data', 'EOD_API_KEY'],
+  ['fred', 'FRED_API_KEY'],
+  ['marketaux', 'MARKETAUX_API_KEY']
+];
 
 try { youtube.checkBinaries(); } catch (e) { console.warn('[youtube]', e.message); }
 
@@ -76,6 +85,31 @@ app.get('/api/v1/config', (req, res) => {
   res.json({
     google_client_id: process.env.GOOGLE_CLIENT_ID || '',
     allow_guest: process.env.ALLOW_GUEST !== '0'
+  });
+});
+
+app.get('/api/v1/status', (req, res) => {
+  res.json({
+    ok: true,
+    app: 'Pulse',
+    ts: Date.now(),
+    ai: {
+      configured_providers: ai.configuredProviders(),
+      providers: ai.providerStatus()
+    },
+    integrations: OPTIONAL_INTEGRATIONS.map(([name, envKey]) => ({
+      name,
+      env_key: envKey,
+      configured: !!process.env[envKey]
+    })),
+    features: {
+      guest_auth: process.env.ALLOW_GUEST !== '0',
+      google_auth: !!process.env.GOOGLE_CLIENT_ID,
+      ai_images: true,
+      web_proxy: true,
+      youtube_proxy: true,
+      game_uploads: true
+    }
   });
 });
 
@@ -162,7 +196,16 @@ app.get('/api/v1/chats/ai', authMiddleware, (req, res) => {
 
 app.get('/api/v1/chats/:id/messages', authMiddleware, (req, res) => {
   if (!chat.isMember(req.params.id, req.user.user_id)) return res.status(403).json({ error: 'not a member' });
-  res.json({ messages: chat.getMessages(req.params.id) });
+  const limit = req.query.limit || 100;
+  const before = req.query.before ? Number(req.query.before) : null;
+  res.json({ messages: chat.getMessages(req.params.id, limit, before) });
+});
+
+app.get('/api/v1/chats/:id', authMiddleware, (req, res) => {
+  if (!chat.isMember(req.params.id, req.user.user_id)) return res.status(403).json({ error: 'not a member' });
+  const channel = chat.getChannelSummary(req.params.id, req.user.user_id);
+  if (!channel) return res.status(404).json({ error: 'not found' });
+  res.json({ channel });
 });
 
 app.post('/api/v1/chats/:id/message', authMiddleware, async (req, res) => {
@@ -194,6 +237,13 @@ app.post('/api/v1/ai/upload', authMiddleware, aiUpload.single('image'), (req, re
     url: `/uploads/ai/${req.file.filename}`,
     mime: req.file.mimetype,
     size: req.file.size
+  });
+});
+
+app.get('/api/v1/ai/status', authMiddleware, (req, res) => {
+  res.json({
+    configured_providers: ai.configuredProviders(),
+    providers: ai.providerStatus()
   });
 });
 
@@ -309,8 +359,21 @@ app.get('/api/v1/youtube/comments/:id', async (req, res) => {
 // Not designed to bypass network filters — see backend/proxy.js for details.
 app.all('/api/v1/proxy/fetch', proxy.handleFetch);
 
+app.get('/api/v1/proxy/session', (req, res) => {
+  res.json(proxy.sessionStatus(req.query.sid));
+});
+
+app.delete('/api/v1/proxy/session', (req, res) => {
+  res.json({ ok: proxy.clearSession(req.query.sid) });
+});
+
 // ======== HEALTH ========
-app.get('/api/v1/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/api/v1/health', (req, res) => res.json({
+  ok: true,
+  ts: Date.now(),
+  ai_providers: ai.configuredProviders().length,
+  google_auth: !!process.env.GOOGLE_CLIENT_ID
+}));
 
 // ======== HTTP + WS ========
 const server = http.createServer(app);

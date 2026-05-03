@@ -14,10 +14,12 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o 
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend/package*.json ./backend/
+WORKDIR /app/backend
 RUN npm ci --omit=dev
 
-COPY . .
+COPY backend ./
+COPY frontend ../frontend
 
 # Persistent dirs
 RUN mkdir -p data uploads/games uploads/avatars

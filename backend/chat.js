@@ -34,15 +34,21 @@ function findOrCreateDirectChannel(userA, userB) {
 }
 
 function createGroup(ownerId, name, memberIds = []) {
+  const cleanName = String(name || '').trim().slice(0, 80);
+  if (!cleanName) throw new Error('Group name required');
   const channelId = uuid();
   const now = Date.now();
   db.prepare(`INSERT INTO channels (channel_id,type,name,owner_id,created_at) VALUES (?, 'group', ?, ?, ?)`)
-    .run(channelId, name, ownerId, now);
+    .run(channelId, cleanName, ownerId, now);
   const stmt = db.prepare(`INSERT INTO memberships (channel_id,user_id,role,joined_at) VALUES (?, ?, ?, ?)`);
   stmt.run(channelId, ownerId, 'owner', now);
-  for (const uid of memberIds) {
+  const uniqueMembers = [...new Set(memberIds.filter(Boolean))];
+  for (const uid of uniqueMembers) {
     if (uid === ownerId) continue;
-    try { stmt.run(channelId, uid, 'member', now); } catch {}
+    const exists = db.prepare('SELECT 1 FROM users WHERE user_id = ?').get(uid);
+    if (exists) {
+      try { stmt.run(channelId, uid, 'member', now); } catch {}
+    }
   }
   return channelId;
 }
@@ -73,13 +79,33 @@ function listChannelsForUser(userId) {
   return rows;
 }
 
-function getMessages(channelId, limit = 100) {
+function getMessages(channelId, limit = 100, before = null) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 200));
+  const beforeClause = before ? 'AND m.timestamp < @before' : '';
   return db.prepare(`
     SELECT m.*, u.display_name AS sender_name, u.avatar_url AS sender_avatar
     FROM messages m JOIN users u ON u.user_id = m.sender_id
-    WHERE m.channel_id = ?
+    WHERE m.channel_id = @channelId ${beforeClause}
     ORDER BY m.timestamp ASC
-    LIMIT ?`).all(channelId, limit);
+    LIMIT @limit`).all({ channelId, limit: safeLimit, before });
+}
+
+function getChannelSummary(channelId, viewerId) {
+  const channel = db.prepare('SELECT * FROM channels WHERE channel_id = ?').get(channelId);
+  if (!channel) return null;
+  const members = db.prepare(`
+    SELECT u.user_id, u.email, u.display_name, u.avatar_url, m.role, m.joined_at
+    FROM memberships m
+    JOIN users u ON u.user_id = m.user_id
+    WHERE m.channel_id = ?
+    ORDER BY m.role = 'owner' DESC, u.display_name ASC`).all(channelId);
+  if (channel.type === 'direct') {
+    const other = members.find(m => m.user_id !== viewerId);
+    channel.name = other ? other.display_name : 'Direct';
+    channel.other = other || null;
+  }
+  channel.members = members;
+  return channel;
 }
 
 function postMessage({ channelId, senderId, content, messageType = 'text', attachmentUrl = null, parentId = null }) {
@@ -116,6 +142,7 @@ module.exports = {
   createGroup,
   listChannelsForUser,
   getMessages,
+  getChannelSummary,
   postMessage,
   isMember,
   getChannelMembers,

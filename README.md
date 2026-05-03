@@ -42,6 +42,8 @@ npm test
 
 See [DEPLOY-VERCEL.md](./DEPLOY-VERCEL.md). Short version: **Vercel for frontend + Railway/Fly/Render for backend** (Vercel can't host the WebSockets, SQLite, and `yt-dlp` streaming).
 
+For the preferred single-service Render deployment, see [RENDER-HOSTING.md](./RENDER-HOSTING.md).
+
 Optional env:
 - `OPENAI_API_KEY` — enable real LLM responses on the AI tab
 - `JWT_SECRET` — override JWT secret

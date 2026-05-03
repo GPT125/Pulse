@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test-proxy.js"
+    "test": "node test-proxy.js && node test-integration.js",
+    "test:proxy": "node test-proxy.js",
+    "test:integration": "node test-integration.js"
   },
   "keywords": [],
   "author": "",

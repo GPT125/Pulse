@@ -11,7 +11,8 @@
   --text-2: #4c4f56;
   --muted: #8a8d94;
   --accent: #007aff;
-  --accent-2: #5e5ce6;
+  --accent-2: #0f766e;
+  --gold: #c47f17;
   --pink: #ff2d55;
   --green: #34c759;
   --orange: #ff9500;
@@ -362,6 +363,63 @@ button { cursor: pointer; }
 }
 .ai-blurb h3 { margin: 0 0 6px; }
 .ai-blurb p { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0; }
+.ops-card {
+  margin: 0 14px 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.ops-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 12px; font-weight: 700; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+.mini-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-2);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.mini-btn:hover { border-color: var(--border-2); color: var(--text); background: var(--panel-2); }
+.mini-btn.danger { color: #c2410c; }
+.status-list, .integration-grid { display: grid; gap: 8px; }
+.integration-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.status-row {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 0; padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.status-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px rgba(138,141,148,.14);
+}
+.status-row.ok .status-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(52,199,89,.16);
+}
+.status-row.missing .status-dot {
+  background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(196,127,23,.16);
+}
+.status-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.status-copy strong {
+  font-size: 12px; line-height: 1.2; font-weight: 700;
+  text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.status-copy small {
+  color: var(--muted); font-size: 11px; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* ========== GAMES ========== */
 .game-grid {
@@ -498,6 +556,23 @@ button { cursor: pointer; }
 }
 .settings-form input:focus { border-color: var(--accent); background: var(--panel); }
 .settings-form button { align-self: flex-start; }
+.feature-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.feature-grid span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
 
 /* ========== MODAL ========== */
 .modal-backdrop {
@@ -608,6 +683,37 @@ button { cursor: pointer; }
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
+.web-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.web-status-main, .web-status-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.status-pill {
+  display: inline-flex; align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-2);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.status-pill.good {
+  color: #0f766e;
+  background: rgba(15,118,110,.08);
+  border-color: rgba(15,118,110,.22);
+}
+.web-session-stats {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.web-session-stats.has-error { color: #c2410c; }
 .web-nav-btn {
   width: 34px; height: 34px; border-radius: 50%;
   border: 0; background: var(--panel-2); color: var(--text);
@@ -667,4 +773,7 @@ button { cursor: pointer; }
   .view.show-list .games-pane,
   .view.show-list .yt-pane,
   .view.show-list .ai-side { display: flex; }
+  .web-status { align-items: flex-start; flex-direction: column; }
+  .web-status-actions { width: 100%; }
+  .web-status-actions .mini-btn { flex: 1; }
 }
