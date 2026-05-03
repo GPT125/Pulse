@@ -176,4 +176,14 @@ function configuredProviders() {
   return PROVIDERS.filter(p => process.env[p.envKey]).map(p => p.name);
 }
 
-module.exports = { aiReply, configuredProviders };
+function providerStatus() {
+  return PROVIDERS.map(p => ({
+    name: p.name,
+    env_key: p.envKey,
+    configured: !!process.env[p.envKey],
+    model: typeof p.model === 'function' ? p.model(false) : p.model,
+    vision: !!p.vision
+  }));
+}
+
+module.exports = { aiReply, configuredProviders, providerStatus };

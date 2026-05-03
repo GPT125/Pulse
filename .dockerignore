@@ -1,0 +1,11 @@
+.git
+.env
+.github/.env
+backend/.env
+backend/data
+backend/uploads
+node_modules
+backend/node_modules
+marketing-ad
+*.log
+.DS_Store

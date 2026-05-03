@@ -41,6 +41,7 @@ window.API = (() => {
     googleSignIn: (credential) => req('POST', '/api/v1/auth/google', { credential }),
     guestSignIn: (display_name) => req('POST', '/api/v1/auth/guest', { display_name }),
     devSignIn: (email, display_name) => req('POST', '/api/v1/auth/dev', { email, display_name }),
+    status: () => req('GET', '/api/v1/status'),
     me: () => req('GET', '/api/v1/me'),
     updateProfile: (data) => req('PUT', '/api/v1/profile', data),
     searchUsers: (q) => req('GET', `/api/v1/users/search?q=${encodeURIComponent(q)}`),
@@ -48,7 +49,14 @@ window.API = (() => {
     createDirect: (user_id) => req('POST', '/api/v1/chats/direct', { user_id }),
     createGroup: (name, members) => req('POST', '/api/v1/chats/group', { name, members }),
     aiChannel: () => req('GET', '/api/v1/chats/ai'),
-    getMessages: (cid) => req('GET', `/api/v1/chats/${cid}/messages`),
+    getChannel: (cid) => req('GET', `/api/v1/chats/${cid}`),
+    getMessages: (cid, opts = {}) => {
+      const params = new URLSearchParams();
+      if (opts.limit) params.set('limit', opts.limit);
+      if (opts.before) params.set('before', opts.before);
+      const qs = params.toString();
+      return req('GET', `/api/v1/chats/${cid}/messages${qs ? '?' + qs : ''}`);
+    },
     sendMessage: (cid, content, extra = {}) => req('POST', `/api/v1/chats/${cid}/message`, { content, ...extra }),
     aiUploadImage: async (file) => {
       const fd = new FormData();
@@ -64,6 +72,8 @@ window.API = (() => {
       const sid = sessionId ? `sid=${encodeURIComponent(sessionId)}&` : '';
       return apiUrl(`/api/v1/proxy/fetch?${sid}url=${encodeURIComponent(target)}`);
     },
+    proxySession: (sessionId) => req('GET', `/api/v1/proxy/session?sid=${encodeURIComponent(sessionId)}`),
+    clearProxySession: (sessionId) => req('DELETE', `/api/v1/proxy/session?sid=${encodeURIComponent(sessionId)}`),
     apiBase: () => API_BASE,
     markRead: (cid, mid) => req('POST', `/api/v1/chats/${cid}/read`, { message_id: mid }),
     listGames: () => req('GET', '/api/v1/games'),

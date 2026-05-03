@@ -111,6 +111,13 @@
           <h3>Pulse AI</h3>
           <p>Ask questions, brainstorm, or summarize. Replies stream from your configured provider.</p>
         </div>
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <span>AI Providers</span>
+            <button type="button" id="ai-status-refresh" class="mini-btn">Refresh</button>
+          </div>
+          <div id="ai-provider-status" class="status-list"></div>
+        </div>
       </div>
       <div class="chat-pane" id="ai-pane">
         <div class="chat-header">
@@ -185,6 +192,19 @@
           <input id="web-url" type="text" placeholder="Enter a URL (https://example.com) or search…" autocomplete="off" />
           <button class="primary-btn" type="submit">Go</button>
         </form>
+        <div class="web-status">
+          <div class="web-status-main">
+            <span class="status-pill good">Server-side cookies</span>
+            <span class="status-pill">DNS guard</span>
+            <span class="status-pill">HTML/CSS rewrite</span>
+            <span id="web-session-stats" class="web-session-stats">New proxy session</span>
+          </div>
+          <div class="web-status-actions">
+            <button type="button" id="web-copy" class="mini-btn">Copy URL</button>
+            <button type="button" id="web-open-external" class="mini-btn">Open Original</button>
+            <button type="button" id="web-clear-session" class="mini-btn danger">Clear Session</button>
+          </div>
+        </div>
         <div class="web-frame-wrap">
           <iframe id="web-frame" class="web-frame" sandbox="allow-scripts allow-forms allow-popups allow-same-origin" referrerpolicy="no-referrer"></iframe>
           <div id="web-empty" class="empty-state">
@@ -213,6 +233,21 @@
         <div class="settings-section">
           <h3>Account</h3>
           <p class="muted">Signed in as <span id="settings-email"></span></p>
+        </div>
+        <div class="settings-section">
+          <h3>Platform Status</h3>
+          <div id="integration-grid" class="integration-grid"></div>
+        </div>
+        <div class="settings-section">
+          <h3>Product Roadmap</h3>
+          <div class="feature-grid">
+            <span>Message search</span><span>Threads</span><span>Reactions</span><span>Read receipts</span><span>Pinned chats</span>
+            <span>Message edit</span><span>Message delete</span><span>File sharing</span><span>Voice notes</span><span>Push notifications</span>
+            <span>AI streaming</span><span>AI memory</span><span>AI chat summaries</span><span>Image reasoning</span><span>Provider failover</span>
+            <span>Proxy diagnostics</span><span>Proxy allowlists</span><span>Proxy session reset</span><span>Proxy compatibility score</span><span>Proxy logs</span>
+            <span>Game moderation</span><span>Game thumbnails</span><span>Game categories</span><span>User profiles</span><span>Admin dashboard</span>
+            <span>Usage analytics</span><span>Billing-ready plans</span><span>Team spaces</span><span>Audit logs</span><span>Render deployment</span>
+          </div>
         </div>
       </div>
     </section>

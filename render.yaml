@@ -9,12 +9,12 @@ services:
     plan: starter
     region: oregon
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerContext: .
     healthCheckPath: /api/v1/health
     autoDeploy: true
     disk:
       name: pulse-data
-      mountPath: /app/data
+      mountPath: /app/backend/data
       sizeGB: 1
     envVars:
       - key: NODE_ENV

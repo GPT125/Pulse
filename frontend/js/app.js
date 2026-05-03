@@ -99,6 +99,8 @@
       try { google.accounts.id.disableAutoSelect(); } catch {}
       location.reload();
     });
+    const refresh = $('#ai-status-refresh');
+    if (refresh) refresh.addEventListener('click', renderPlatformStatus);
   }
 
   function bindSettings() {
@@ -141,6 +143,52 @@
     $('#settings-email').textContent = u.email;
   }
 
+  function statusChip(label, configured, meta = '') {
+    return el('div', { class: 'status-row ' + (configured ? 'ok' : 'missing') }, [
+      el('span', { class: 'status-dot' }),
+      el('div', { class: 'status-copy' }, [
+        el('strong', { text: label }),
+        el('small', { text: meta || (configured ? 'Configured' : 'Needs env var') })
+      ])
+    ]);
+  }
+
+  async function renderPlatformStatus() {
+    try {
+      const status = await API.status();
+      const aiHost = $('#ai-provider-status');
+      if (aiHost) {
+        aiHost.innerHTML = '';
+        for (const p of status.ai.providers) {
+          aiHost.appendChild(statusChip(
+            p.name,
+            p.configured,
+            p.configured ? `${p.model}${p.vision ? ' · vision' : ''}` : p.env_key
+          ));
+        }
+      }
+
+      const grid = $('#integration-grid');
+      if (grid) {
+        grid.innerHTML = '';
+        const core = [
+          ['Google Auth', status.features.google_auth, 'GOOGLE_CLIENT_ID'],
+          ['Guest Auth', status.features.guest_auth, 'ALLOW_GUEST'],
+          ['AI Images', status.features.ai_images, 'Uploads + vision providers'],
+          ['Web Proxy', status.features.web_proxy, 'Rewrite + cookie sessions'],
+          ['YouTube Proxy', status.features.youtube_proxy, 'yt-dlp required'],
+          ['Game Uploads', status.features.game_uploads, 'HTML5 uploads']
+        ];
+        for (const [name, ok, meta] of core) grid.appendChild(statusChip(name, ok, meta));
+        for (const i of status.integrations) {
+          grid.appendChild(statusChip(i.name.replace(/_/g, ' '), i.configured, i.env_key));
+        }
+      }
+    } catch (err) {
+      console.warn('status unavailable', err);
+    }
+  }
+
   async function startApp() {
     showAuth(false);
     renderMe();
@@ -151,6 +199,7 @@
     YouTube.init();
     bindNav();
     bindSettings();
+    renderPlatformStatus();
     await Chat.refreshList();
   }
 
