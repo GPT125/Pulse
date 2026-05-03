@@ -307,7 +307,7 @@ app.get('/api/v1/youtube/comments/:id', async (req, res) => {
 // ======== EDUCATIONAL HTTP PROXY ========
 // Basic learning-oriented proxy. Server-side fetch + HTML link rewriting.
 // Not designed to bypass network filters — see backend/proxy.js for details.
-app.get('/api/v1/proxy/fetch', proxy.handleFetch);
+app.all('/api/v1/proxy/fetch', proxy.handleFetch);
 
 // ======== HEALTH ========
 app.get('/api/v1/health', (req, res) => res.json({ ok: true, ts: Date.now() }));

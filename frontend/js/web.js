@@ -4,6 +4,18 @@ window.WebView = (() => {
   const { $ } = UI;
   const history = [];
   let cursor = -1;
+  const sessionId = (() => {
+    try {
+      const existing = sessionStorage.getItem('pulse_proxy_sid');
+      if (existing) return existing;
+      const fresh = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
+        .replace(/[^A-Za-z0-9_-]/g, '');
+      sessionStorage.setItem('pulse_proxy_sid', fresh);
+      return fresh;
+    } catch {
+      return String(Date.now()) + String(Math.random()).slice(2);
+    }
+  })();
 
   function normalizeUrl(input) {
     const t = (input || '').trim();
@@ -17,7 +29,7 @@ window.WebView = (() => {
 
   function load(url, push = true) {
     if (!url) return;
-    const proxied = API.proxyUrl(url);
+    const proxied = API.proxyUrl(url, sessionId);
     const frame = $('#web-frame');
     const empty = $('#web-empty');
     frame.style.display = 'block';

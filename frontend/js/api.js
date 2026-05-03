@@ -60,7 +60,10 @@ window.API = (() => {
       if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
       return data;
     },
-    proxyUrl: (target) => apiUrl(`/api/v1/proxy/fetch?url=${encodeURIComponent(target)}`),
+    proxyUrl: (target, sessionId) => {
+      const sid = sessionId ? `sid=${encodeURIComponent(sessionId)}&` : '';
+      return apiUrl(`/api/v1/proxy/fetch?${sid}url=${encodeURIComponent(target)}`);
+    },
     apiBase: () => API_BASE,
     markRead: (cid, mid) => req('POST', `/api/v1/chats/${cid}/read`, { message_id: mid }),
     listGames: () => req('GET', '/api/v1/games'),
